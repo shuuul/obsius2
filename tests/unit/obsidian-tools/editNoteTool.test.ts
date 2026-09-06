@@ -39,9 +39,7 @@ describe('createEditNoteTool', () => {
     });
 
     expect(deps.vault.editNote).toHaveBeenCalledWith(expect.objectContaining({
-      old_string: 'sentence.Second',
-      new_string: 'sentence.\n\nSecond',
-      replace_all: false,
+      edits: [{ oldText: 'sentence.Second', newText: 'sentence.\n\nSecond', replaceAll: false }],
     }));
   });
 
@@ -55,9 +53,7 @@ describe('createEditNoteTool', () => {
     });
 
     expect(deps.vault.editNote).toHaveBeenCalledWith(expect.objectContaining({
-      old_string: '>> Target',
-      new_string: '\n\n### Heading',
-      replace_all: false,
+      edits: [{ oldText: '>> Target', newText: '\n\n### Heading', replaceAll: false }],
     }));
   });
 
@@ -76,9 +72,29 @@ describe('createEditNoteTool', () => {
     expect(deps.vault.editNote).toHaveBeenCalledWith({
       file: undefined,
       path: 'notes/a.md',
-      old_string: '>>',
-      new_string: newString,
-      replace_all: true,
+      edits: [{ oldText: '>>', newText: newString, replaceAll: true }],
+    });
+  });
+
+  it('passes every edits[] item through instead of only the first', async () => {
+    const deps = makeDeps();
+    const tool = createEditNoteTool(deps);
+
+    await tool.execute('call', {
+      path: 'notes/a.md',
+      edits: [
+        { oldText: 'alpha', newText: 'one' },
+        { oldText: 'beta', newText: 'two', replaceAll: true },
+      ],
+    });
+
+    expect(deps.vault.editNote).toHaveBeenCalledWith({
+      file: undefined,
+      path: 'notes/a.md',
+      edits: [
+        { oldText: 'alpha', newText: 'one', replaceAll: false },
+        { oldText: 'beta', newText: 'two', replaceAll: true },
+      ],
     });
   });
 });

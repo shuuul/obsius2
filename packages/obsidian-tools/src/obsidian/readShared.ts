@@ -160,9 +160,10 @@ function buildRangeContinuation(
   returnedEndLine: number,
 ): string {
   const nextStartLine = returnedEndLine + 1;
+  const remaining = Math.max(1, requestedEndLine - nextStartLine + 1);
   return `\n\n[Read truncated: returned lines ${requestedStartLine}-${returnedEndLine}`
     + ` of requested ${requestedStartLine}-${requestedEndLine}.`
-    + ` Continue with startLine=${nextStartLine}, endLine=${requestedEndLine}.]`;
+    + ` Continue with offset=${nextStartLine}, limit=${remaining}.]`;
 }
 
 function buildCharacterContinuation(
@@ -378,7 +379,7 @@ export function paginateLineRange(
     const firstLineLength = firstSpan.end - firstSpan.start;
     throw new OversizedFirstLineError(
       `Line ${requestedStartLine} is ${firstLineLength} characters and cannot fit within maxChars=${maxChars}`
-      + ` with the continuation marker. Continue with startLine=${requestedStartLine}`
+      + ` with the continuation marker. Continue with offset=${requestedStartLine}`
       + ` and line-relative startChar=1; follow the returned nextStartLine / nextStartChar pair.`
       + ` Do not increase maxChars past the effective clamp.`,
       firstSpan.start + 1,

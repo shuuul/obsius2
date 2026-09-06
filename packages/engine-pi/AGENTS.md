@@ -64,7 +64,7 @@ flowchart TD
 - `src/tools/buildPiToolRegistryCore.ts` owns registry composition.
   - The app injects host-specific tools as Pivi `ToolSpec` values through `PiBaseToolProvider`.
   - Optional main-Agent-only tools arrive through a distinct `PiMainOnlyToolProvider` (not a flag on `ToolSpec` and not a name blacklist over the base provider). Main registry composition includes those ToolSpecs and appends their names into `RegisteredToolSummary` / the registered-tools prompt. `buildSubagentTools` must never request, receive, or filter this provider — structural absence only.
-  - `toPiAgentTool()` in `piToolAdapter.ts` performs the narrow `ToolSpec` → Pi `AgentTool` conversion (including `executionMode`).
+  - `toPiAgentTool()` in `piToolAdapter.ts` performs the narrow `ToolSpec` → Pi `AgentTool` conversion (including `executionMode` and `prepareArguments` alias shims). Successful alias calls get one live-name/canonical-field reminder through Agent `afterToolCall` (`remindCanonicalToolForm`), because `prepareArguments` runs before execute and would otherwise hide field aliases.
   - The registry adds the vault `skill` tool, conditionally adds `spawn_agent`, and appends MCP bridge tools.
   - It loads vault context layers and returns prompt appendices, registered-tool summary text, and external-context availability alongside the executable tools.
   - A missing base tool provider is an error; the Pi engine does not construct Obsidian tools.

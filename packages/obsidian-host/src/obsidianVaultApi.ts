@@ -18,7 +18,7 @@ import {
   normalizePathForVault,
   requireAgentVaultMutationPath,
 } from './path';
-import { replaceVaultEditMatch } from './vaultEditMatch';
+import { applyVaultEdits, type VaultEditItem } from './vaultEditMatch';
 
 export interface VaultSearchHit {
   path: string;
@@ -288,30 +288,35 @@ export class ObsidianVaultApi {
   async editNote(params: {
     file?: string;
     path?: string;
-    old_string: string;
-    new_string: string;
+    edits?: VaultEditItem[];
+    old_string?: string;
+    new_string?: string;
     replace_all?: boolean;
   }): Promise<{
     path: string;
     replacements: number;
   }> {
     const resolved = this.resolveMutationFile(params.file, params.path);
-    const oldString = params.old_string;
-    if (!oldString) {
-      throw new Error('old_string must not be empty.');
+    const edits = params.edits && params.edits.length > 0
+      ? params.edits
+      : params.old_string !== undefined && params.new_string !== undefined
+        ? [{
+            oldText: params.old_string,
+            newText: params.new_string,
+            replaceAll: Boolean(params.replace_all),
+          }]
+        : [];
+    if (edits.length === 0) {
+      throw new Error('edits must contain at least one { oldText, newText } item.');
     }
-    const newString = params.new_string;
-    const replaceAll = Boolean(params.replace_all);
 
     let replacements = 0;
     await this.capturePreWriteSnapshot(resolved);
     await this.app.vault.process(resolved, (data) => {
-      const result = replaceVaultEditMatch({
+      const result = applyVaultEdits({
         filePath: resolved.path,
         content: data,
-        oldString,
-        newString,
-        replaceAll,
+        edits,
       });
       replacements = result.replacements;
       return result.content;

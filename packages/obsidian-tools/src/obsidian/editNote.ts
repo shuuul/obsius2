@@ -43,10 +43,12 @@ export function createEditNoteTool(deps: ObsidianToolDeps): ToolSpec {
         + 'inspect both physical-line boundaries and include the required line endings in the replacement. '
         + 'A heading marker must begin at a physical line start: if the source is `>> Target`, replacing only `Target` with `### Heading` '
         + 'produces `>> ### Heading`, not a heading. Include the delimiter in oldText and write the required `\\n\\n` into newText. '
-        + 'Matching is unique by default; set replaceAll=true only when every exact occurrence should receive the identical replacement.',
+        + 'Matching is unique by default; set replaceAll=true only when every exact occurrence should receive the identical replacement. '
+        + 'Multiple `edits[]` items are matched against the original file, not incrementally; overlapping spans fail.',
       parameters:
         '`path` or `file`, plus `edits: [{ oldText, newText, replaceAll? }]`. '
-        + 'Optional `replaceAll: true` on an item replaces every occurrence; otherwise an ambiguous match fails.',
+        + 'Optional `replaceAll: true` on an item replaces every occurrence; otherwise an ambiguous match fails. '
+        + 'Every item is matched against the original file.',
     },
     parameters: {
       type: 'object',
@@ -85,24 +87,30 @@ export function createEditNoteTool(deps: ObsidianToolDeps): ToolSpec {
         throw new Error('Invalid edit input: path or file must be a string.');
       }
       const editsInput = Array.isArray(input.edits) ? input.edits : [];
-      const first = editsInput[0] as Record<string, unknown> | undefined;
-      if (!first) {
+      const edits = editsInput.map((item, index) => {
+        if (typeof item !== 'object' || item === null || Array.isArray(item)) {
+          throw new Error(`Invalid edit input: edits[${index}] must be { oldText, newText }.`);
+        }
+        const record = item as Record<string, unknown>;
+        return {
+          oldText: requireStringParam(record.oldText, index === 0 ? 'oldText' : `edits[${index}].oldText`),
+          newText: requireStringParam(record.newText, index === 0 ? 'newText' : `edits[${index}].newText`),
+          replaceAll: record.replaceAll === true,
+        };
+      });
+      if (edits.length === 0) {
         throw new Error('Invalid edit input: edits must contain at least one { oldText, newText } item.');
       }
-      const oldText = requireStringParam(first.oldText, 'oldText');
-      const newText = requireStringParam(first.newText, 'newText');
       const result = await vault.editNote({
         file,
         path: notePath,
-        old_string: oldText,
-        new_string: newText,
-        replace_all: Boolean(first.replaceAll),
+        edits,
       });
       const label = result.replacements === 1 ? 'replacement' : 'replacements';
       return textResult(`Edited ${result.path} (${result.replacements} ${label})`, {
         path: result.path,
         filePath: result.path,
-        structuredPatch: buildSubstringPatchHunks(oldText, newText),
+        structuredPatch: edits.flatMap((edit) => buildSubstringPatchHunks(edit.oldText, edit.newText)),
         replacements: result.replacements,
       });
     },

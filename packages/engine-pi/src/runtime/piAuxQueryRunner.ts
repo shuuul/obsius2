@@ -8,7 +8,7 @@ import type { ToolCallInfo } from '@pivi/agent/tools';
 
 import { streamPiAiModelsSimple } from '../models/piAiModels';
 import { resolvePiModel, resolvePiProviderAuth } from '../models/piModelEnv';
-import { wrapStreamFnToHideAliasTools } from '../tools/piToolAdapter';
+import { remindCanonicalToolForm, wrapStreamFnToHideAliasTools } from '../tools/piToolAdapter';
 import { PiAgentEventAdapter } from './piAgentEventAdapter';
 import { PiBackgroundSubagentJobs } from './piBackgroundSubagentJobs';
 import { createPiReadBudget, type PiReadBudget } from './piReadBudget';
@@ -166,6 +166,7 @@ export class PiAuxQueryRunner<TModel extends PiAuxQueryModel = PiAuxQueryModel> 
       },
       convertToLlm: (messages) => messages as never[],
       streamFn: wrapStreamFnToHideAliasTools(this.dependencies.streamSimple),
+      afterToolCall: remindCanonicalToolForm,
     });
     this.readBudgets.set(agent, readBudget);
     return agent;

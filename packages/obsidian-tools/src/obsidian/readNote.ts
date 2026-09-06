@@ -197,12 +197,13 @@ export function createReadNoteTool(deps: ObsidianToolDeps): ToolSpec {
                 const returnedFrom = getLineCharacterPosition(lineSpans, returnedStart);
                 const returnedThrough = getLineCharacterPosition(lineSpans, returnedEnd);
                 const next = getLineCharacterPosition(lineSpans, nextStart);
-                const endLineParameter = lineRelative.endLine !== undefined
-                  ? `, endLine=${lineRelative.endLine}`
-                  : '';
+                const remaining = lineRelative.endLine !== undefined
+                  ? Math.max(1, lineRelative.endLine - next.line + 1)
+                  : undefined;
+                const limitParameter = remaining !== undefined ? `, limit=${remaining}` : '';
                 return `\n\n[Read truncated: returned from line ${returnedFrom.line}, character ${returnedFrom.character}`
                   + ` through line ${returnedThrough.line}, character ${returnedThrough.character}.`
-                  + ` Continue with startLine=${next.line}, startChar=${next.character}${endLineParameter}, maxChars=${pageMaxChars}.]`;
+                  + ` Continue with offset=${next.line}, startChar=${next.character}${limitParameter}, maxChars=${pageMaxChars}.]`;
               },
             } : {}),
           });

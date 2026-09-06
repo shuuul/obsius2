@@ -448,6 +448,22 @@ describe('ObsidianVaultApi', () => {
     expect(app.getContent('notes/a.md')).toBe('baz bar baz');
   });
 
+  it('editNote applies every edits[] item against the original file', async () => {
+    const app = makeApp([{ path: 'notes/a.md', content: 'alpha beta' }]);
+    const api = new ObsidianVaultApi(app as never);
+
+    const result = await api.editNote({
+      path: 'notes/a.md',
+      edits: [
+        { oldText: 'alpha', newText: 'one' },
+        { oldText: 'beta', newText: 'two' },
+      ],
+    });
+
+    expect(result.replacements).toBe(2);
+    expect(app.getContent('notes/a.md')).toBe('one two');
+  });
+
   it('editNote rejects empty old_string', async () => {
     const api = new ObsidianVaultApi(makeApp([
       { path: 'notes/a.md', content: 'hello' },

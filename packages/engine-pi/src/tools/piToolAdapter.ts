@@ -1,4 +1,10 @@
-import type { AgentTool, AgentToolResult, StreamFn } from '@earendil-works/pi-agent-core';
+import type {
+  AfterToolCallContext,
+  AfterToolCallResult,
+  AgentTool,
+  AgentToolResult,
+  StreamFn,
+} from '@earendil-works/pi-agent-core';
 import {
   appendToolResultReminder,
   buildAliasReminder,
@@ -9,16 +15,30 @@ import {
   type ToolSpec,
 } from '@pivi/agent/tools';
 
-function withAliasReminder(
-  result: unknown,
-  calledName: string,
-  rawArguments: unknown,
-): unknown {
-  const reminder = buildAliasReminder(calledName, rawArguments);
-  if (!reminder) {
-    return result;
+/**
+ * Remind from the raw tool-call name and arguments. `prepareArguments` runs
+ * before execute, so execute only sees canonical fields.
+ */
+export async function remindCanonicalToolForm(
+  context: AfterToolCallContext,
+): Promise<AfterToolCallResult | undefined> {
+  if (context.isError) {
+    return undefined;
   }
-  return appendToolResultReminder(result, reminder);
+  const reminder = buildAliasReminder(context.toolCall.name, context.toolCall.arguments);
+  if (!reminder) {
+    return undefined;
+  }
+  const reminded = appendToolResultReminder(context.result, reminder);
+  if (
+    typeof reminded !== 'object'
+    || reminded === null
+    || !('content' in reminded)
+    || !Array.isArray(reminded.content)
+  ) {
+    return undefined;
+  }
+  return { content: reminded.content as AfterToolCallResult['content'] };
 }
 
 export function toPiAgentTool(spec: ToolSpec): AgentTool {
@@ -33,8 +53,7 @@ export function toPiAgentTool(spec: ToolSpec): AgentTool {
       return normalizeToolCallArguments(liveName, args).args;
     },
     async execute(toolCallId, params, signal) {
-      const result = await spec.execute(toolCallId, params, signal) as AgentToolResult<unknown>;
-      return withAliasReminder(result, spec.name, params) as AgentToolResult<unknown>;
+      return await spec.execute(toolCallId, params, signal) as AgentToolResult<unknown>;
     },
   };
 }
@@ -60,10 +79,7 @@ export function expandPiToolsWithSilentAliases(liveTools: AgentTool[]): AgentToo
             ? live.prepareArguments(args)
             : normalizeToolCallArguments(live.name, args).args;
         },
-        async execute(toolCallId, params, signal, onUpdate) {
-          const result = await live.execute(toolCallId, params, signal, onUpdate);
-          return withAliasReminder(result, alias, params) as AgentToolResult<unknown>;
-        },
+        execute: live.execute,
       };
       extras.push(extra);
       byName.set(alias, extra);

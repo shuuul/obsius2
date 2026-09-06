@@ -53,7 +53,7 @@ import {
   type PiBaseToolProvider,
   type PiMainOnlyToolProvider,
 } from '../tools/buildPiToolRegistryCore';
-import { toPiAgentTool, wrapStreamFnToHideAliasTools } from '../tools/piToolAdapter';
+import { remindCanonicalToolForm, toPiAgentTool, wrapStreamFnToHideAliasTools } from '../tools/piToolAdapter';
 import { PiAgentEventAdapter, type PiChatErrorContext } from './piAgentEventAdapter';
 import { createPiAuxQueryRunner, type PiAuxQueryRunner } from './piAuxQueryRunner';
 import {
@@ -299,6 +299,7 @@ export class PiChatRuntime implements PiChatService {
         this.providerOverride?.streamFn
           ?? ((streamModel, context, options) => streamPiAiModelsSimple(streamModel, context, options)),
       ),
+      afterToolCall: remindCanonicalToolForm,
       sessionId: this.sessionId ?? undefined,
       steeringMode: 'one-at-a-time',
     });
