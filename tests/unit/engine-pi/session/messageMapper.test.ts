@@ -169,7 +169,7 @@ describe('MessageMapper', () => {
     expect(first(messages).toolCalls).toEqual([
       {
         id: 'call-1',
-        name: 'obsidian_read',
+        name: 'read',
         input: { path: 'A.md' },
         status: 'completed',
         isExpanded: false,

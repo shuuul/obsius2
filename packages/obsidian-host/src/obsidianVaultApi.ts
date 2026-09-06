@@ -18,7 +18,7 @@ import {
   normalizePathForVault,
   requireAgentVaultMutationPath,
 } from './path';
-import { replaceVaultEditMatch } from './vaultEditMatch';
+import { applyVaultEdits, type VaultEditItem } from './vaultEditMatch';
 
 export interface VaultSearchHit {
   path: string;
@@ -197,7 +197,7 @@ export class ObsidianVaultApi {
     }
     const resolved = this.resolveFile(file, undefined);
     if (!resolved) {
-      throw new Error('Note not found. Provide file= (wikilink name) or path= (vault-relative).');
+      throw new Error('Note not found.');
     }
     // file= aliases resolve outside requireMutationPath; enforce policy on the real path.
     this.assertResolvedMutationPath(resolved.path, options);
@@ -205,16 +205,37 @@ export class ObsidianVaultApi {
   }
 
   resolveFile(file?: string, path?: string): TFile | null {
-    if (path?.trim()) {
-      const normalized = normalizePathForVault(path.trim(), this.vaultPath());
+    const byVaultPath = (value?: string): TFile | null => {
+      if (!value?.trim()) {
+        return null;
+      }
+      const normalized = normalizePathForVault(value.trim(), this.vaultPath());
       if (!normalized) {
         return null;
       }
       return this.asFile(this.app.vault.getAbstractFileByPath(normalized));
+    };
+    const byWikilink = (value?: string): TFile | null => {
+      if (!value?.trim()) {
+        return null;
+      }
+      return this.app.metadataCache.getFirstLinkpathDest(value.trim(), '') ?? null;
+    };
+
+    if (path?.trim()) {
+      const fromPath = byVaultPath(path) ?? byWikilink(path);
+      if (fromPath) {
+        return fromPath;
+      }
     }
     if (file?.trim()) {
-      const dest = this.app.metadataCache.getFirstLinkpathDest(file.trim(), '');
-      return dest ?? null;
+      const fromFile = byWikilink(file) ?? byVaultPath(file);
+      if (fromFile) {
+        return fromFile;
+      }
+    }
+    if (path?.trim() || file?.trim()) {
+      return null;
     }
     const active = this.app.workspace.getActiveFile();
     return active ?? null;
@@ -258,7 +279,7 @@ export class ObsidianVaultApi {
   async readNote(file?: string, path?: string): Promise<{ path: string; content: string }> {
     const resolved = this.resolveFile(file, path);
     if (!resolved) {
-      throw new Error('Note not found. Provide file= (wikilink name) or path= (vault-relative).');
+      throw new Error('Note not found.');
     }
     const content = await this.app.vault.read(resolved);
     return { path: resolved.path, content };
@@ -267,30 +288,35 @@ export class ObsidianVaultApi {
   async editNote(params: {
     file?: string;
     path?: string;
-    old_string: string;
-    new_string: string;
+    edits?: VaultEditItem[];
+    old_string?: string;
+    new_string?: string;
     replace_all?: boolean;
   }): Promise<{
     path: string;
     replacements: number;
   }> {
     const resolved = this.resolveMutationFile(params.file, params.path);
-    const oldString = params.old_string;
-    if (!oldString) {
-      throw new Error('old_string must not be empty.');
+    const edits = params.edits && params.edits.length > 0
+      ? params.edits
+      : params.old_string !== undefined && params.new_string !== undefined
+        ? [{
+            oldText: params.old_string,
+            newText: params.new_string,
+            replaceAll: Boolean(params.replace_all),
+          }]
+        : [];
+    if (edits.length === 0) {
+      throw new Error('edits must contain at least one { oldText, newText } item.');
     }
-    const newString = params.new_string;
-    const replaceAll = Boolean(params.replace_all);
 
     let replacements = 0;
     await this.capturePreWriteSnapshot(resolved);
     await this.app.vault.process(resolved, (data) => {
-      const result = replaceVaultEditMatch({
+      const result = applyVaultEdits({
         filePath: resolved.path,
         content: data,
-        oldString,
-        newString,
-        replaceAll,
+        edits,
       });
       replacements = result.replacements;
       return result.content;
@@ -443,7 +469,7 @@ export class ObsidianVaultApi {
     }
     const resolved = this.resolveFile(file, path);
     if (!resolved) {
-      throw new Error('Note not found. Provide file= or path=.');
+      throw new Error('Note not found.');
     }
     const properties = this.app.metadataCache.getFileCache(resolved)?.frontmatter ?? {};
     if (name) {
@@ -529,7 +555,31 @@ export class ObsidianVaultApi {
     return base ? base.split('/').filter(Boolean).pop() ?? 'vault' : 'vault';
   }
 
-  /** In-process vault search (no CLI). Supports plain text, tag:, path: prefixes, and folder listing. */
+  private resolveSearchFiles(scopePath: string): TFile[] {
+    if (!scopePath) {
+      return this.app.vault.getMarkdownFiles();
+    }
+    const normalized = normalizePathForVault(scopePath, this.vaultPath());
+    if (!normalized) {
+      throw new Error(`Search path not found: ${scopePath}`);
+    }
+    const resolved = this.app.vault.getAbstractFileByPath(normalized);
+    if (resolved instanceof TFile) {
+      if (resolved.extension !== 'md') {
+        throw new Error(`search only reads Markdown notes. Use \`read\` for ${resolved.path}.`);
+      }
+      return [resolved];
+    }
+    if (resolved instanceof TFolder) {
+      const prefix = resolved.path ? `${resolved.path}/` : '';
+      return this.app.vault.getMarkdownFiles().filter((file) => (
+        prefix ? file.path.startsWith(prefix) : true
+      ));
+    }
+    throw new Error(`Search path not found: ${scopePath}`);
+  }
+
+  /** In-process vault search (no CLI). Case-insensitive literal substring plus tag:. Listing queries error toward `ls`. */
   async searchNotes(params: {
     query: string;
     path?: string;
@@ -537,7 +587,7 @@ export class ObsidianVaultApi {
     context?: boolean;
   }): Promise<VaultSearchHit[]> {
     const limit = params.limit ?? 50;
-    let folderPrefix = params.path?.trim().replace(/\/+$/, '') ?? '';
+    let scopePath = params.path?.trim().replace(/\/+$/, '') ?? '';
     let textQuery = params.query.trim();
     let tagFilter: string | null = null;
 
@@ -545,20 +595,21 @@ export class ObsidianVaultApi {
       tagFilter = textQuery.slice(4).trim().replace(/^#/, '');
       textQuery = '';
     } else if (textQuery.startsWith('path:')) {
-      folderPrefix = textQuery.slice(5).trim().replace(/\/+$/, '');
+      scopePath = textQuery.slice(5).trim().replace(/\/+$/, '');
       textQuery = '';
     }
 
     const listAllInScope = textQuery === '*'
       || textQuery === ''
       || textQuery === '**';
-    const needle = listAllInScope ? '' : textQuery.toLowerCase();
+    if (listAllInScope && !tagFilter) {
+      throw new Error('search is for note contents and tags, not folder listing. Use `ls` with `path` instead.');
+    }
+    const needle = textQuery.toLowerCase();
     const hits: VaultSearchHit[] = [];
+    const files = this.resolveSearchFiles(scopePath);
 
-    for (const file of this.app.vault.getMarkdownFiles()) {
-      if (folderPrefix && !file.path.startsWith(`${folderPrefix}/`) && file.path !== folderPrefix) {
-        continue;
-      }
+    for (const file of files) {
 
       if (tagFilter) {
         const cache = this.app.metadataCache.getFileCache(file);
@@ -601,7 +652,7 @@ export class ObsidianVaultApi {
   async getNoteInfo(file?: string, path?: string): Promise<VaultNoteInfo> {
     const resolved = this.resolveFile(file, path);
     if (!resolved) {
-      throw new Error('Note not found. Provide file= or path=.');
+      throw new Error('Note not found.');
     }
     const cache = this.app.metadataCache.getFileCache(resolved);
     const content = await this.app.vault.cachedRead(resolved);
@@ -767,7 +818,7 @@ export class ObsidianVaultApi {
   ): { path: string; links: VaultLinkEntry[] } {
     const resolved = this.resolveFile(file, path);
     if (!resolved) {
-      throw new Error('Note not found. Provide file= or path=.');
+      throw new Error('Note not found.');
     }
 
     if (direction === 'backlinks') {

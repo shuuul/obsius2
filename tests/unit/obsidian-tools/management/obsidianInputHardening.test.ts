@@ -74,7 +74,7 @@ describe('obsidian tool input hardening', () => {
       path: 'notes/a.md',
       content: { text: 'bad' },
       mode: 'overwrite',
-    })).rejects.toThrow('content and mode are required strings');
+    })).rejects.toThrow('Invalid write input: content is required.');
     expect(deps.vault.writeNote).not.toHaveBeenCalled();
   });
 
@@ -132,7 +132,7 @@ describe('obsidian tool input hardening', () => {
 
     await expect(tool.execute('call', {
       path: { nested: 'bad.md' },
-    })).rejects.toThrow('file or path must be a string');
+    })).rejects.toThrow('Invalid read input: path or file must be a string.');
     expect(deps.vault.readNote).not.toHaveBeenCalled();
   });
 
@@ -294,7 +294,7 @@ describe('obsidian tool input hardening', () => {
 
     expect(result.content[0].text).toContain('1:xxxxxxxx');
     expect(result.content[0].text).not.toContain('4:xxxxxxxx');
-    expect(result.content[0].text).toContain('Continue with startLine=4, endLine=5');
+    expect(result.content[0].text).toContain('Continue with offset=4, limit=');
     expect(result.content[0].text.length).toBeLessThanOrEqual(1_000);
     expect(result.details).toMatchObject({
       requestedRange: { startLine: 1, endLine: 5 },
@@ -404,7 +404,7 @@ describe('obsidian tool input hardening', () => {
     }) as { content: [{ text: string }]; details: Record<string, unknown> };
 
     expect(result.content[0].text.length).toBeLessThanOrEqual(1_000);
-    expect(result.content[0].text).toContain('Continue with startLine=1, startChar=');
+    expect(result.content[0].text).toContain('Continue with offset=1, startChar=');
     expect(result.details).toMatchObject({
       characterCoordinate: 'line-relative',
       returnedStartLine: 1,
@@ -480,7 +480,7 @@ describe('obsidian tool input hardening', () => {
       maxChars: 1_000,
     }) as { content: [{ text: string }]; details: Record<string, unknown> };
 
-    expect(result.content[0].text).toContain('Continue with startLine=3, endLine=4');
+    expect(result.content[0].text).toContain('Continue with offset=3, limit=');
     expect(result.details).toMatchObject({
       requestedRange: { startLine: 1, endLine: 4 },
       returnedRange: { startLine: 1, endLine: 2 },
@@ -656,7 +656,7 @@ describe('obsidian tool input hardening', () => {
       path: { nested: 'bad.md' },
       old_string: 'a',
       new_string: 'b',
-    })).rejects.toThrow('file or path must be a string');
+    })).rejects.toThrow('Invalid edit input: path or file must be a string.');
     expect(deps.vault.editNote).not.toHaveBeenCalled();
   });
 

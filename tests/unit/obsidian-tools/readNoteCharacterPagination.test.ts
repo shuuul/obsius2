@@ -157,7 +157,7 @@ describe('obsidian_read character pagination', () => {
       details: { characterCoordinate: 'line-relative' },
     });
     await expect(read(tool, { startChar: 1, endLine: 1 })).rejects.toThrow(
-      'endLine with startChar requires startLine',
+      'endLine with startChar requires offset',
     );
     await expect(read(tool, { startChar: 1, mode: 'stats' })).rejects.toThrow(
       'startChar cannot be used with mode="stats"',
@@ -211,7 +211,7 @@ describe('obsidian_read character pagination', () => {
       expect(result.content[0].text.length).toBeLessThanOrEqual(1_000);
       if (result.details.truncated !== true) break;
       expect(result.content[0].text).toContain(
-        `Continue with startLine=${String(result.details.nextStartLine)}, startChar=${String(result.details.nextStartChar)}, endLine=3, maxChars=1000`,
+        `Continue with offset=${String(result.details.nextStartLine)}, startChar=${String(result.details.nextStartChar)}, limit=`,
       );
       startLine = result.details.nextStartLine as number;
       startChar = result.details.nextStartChar as number;
@@ -263,7 +263,7 @@ describe('obsidian_read character pagination', () => {
 
     expect(result.content[0].text.length).toBeLessThanOrEqual(1_000);
     expect(sourceText(result)).toMatch(/^界+$/);
-    expect(result.content[0].text).toContain('Continue with startLine=1, startChar=');
+    expect(result.content[0].text).toContain('Continue with offset=1, startChar=');
     expect(result.details).toMatchObject({
       requestedRange: { startLine: 1, endLine: 2 },
       characterCoordinate: 'line-relative',
@@ -293,10 +293,10 @@ describe('obsidian_read character pagination', () => {
     const properties = tool.parameters.properties as Record<string, { description?: string }>;
 
     expect(properties.startChar?.description).toContain('1-based UTF-16');
-    expect(properties.startChar?.description).toContain('relative to startLine');
+    expect(properties.startChar?.description).toContain('relative to offset');
     expect(properties.startChar?.description).toContain('nextStartLine + nextStartChar');
     expect(tool.promptUsage?.summary).toContain('oversized physical line');
-    expect(tool.promptUsage?.summary).toContain('nextStartLine + nextStartChar');
+    expect(tool.promptUsage?.summary).toContain('`nextStartLine` + `nextStartChar`');
     expect(tool.promptUsage?.parameters).toContain('startChar');
   });
 });
@@ -316,7 +316,7 @@ describe('read pagination error hints', () => {
     const message = (thrown as Error).message;
     expect(message).toContain('Line 1 is 201 characters');
     expect(message).toContain('maxChars=50');
-    expect(message).toContain('startLine=1');
+    expect(message).toContain('offset=1');
     expect(message).toContain('startChar');
     expect(message).toContain('nextStartLine');
     expect(message).toContain('nextStartChar');
@@ -332,7 +332,7 @@ describe('read pagination error hints', () => {
     expect(page.returnedStartLine).toBe(1);
     expect(page.rawContent.startsWith('abcdefghij\n')).toBe(true);
     expect(page.nextStartLine).toBe((page.returnedEndLine ?? 0) + 1);
-    expect(page.content).toContain(`Continue with startLine=${String(page.nextStartLine)}, endLine=30.`);
+    expect(page.content).toContain(`Continue with offset=${String(page.nextStartLine)}, limit=`);
   });
 
   it('tells the caller to stop when one character plus the continuation marker cannot fit', () => {

@@ -15,17 +15,17 @@ describe('createEditNoteTool', () => {
     expect(tool.label).toBe('Replace text');
     expect(tool.promptUsage?.summary).toContain('does not need to contain a whole physical line');
     expect(tool.promptUsage?.summary).toContain('shortest exact span that is unique');
-    expect(tool.promptUsage?.summary).toContain('old_string=`sentence.Second`');
-    expect(tool.promptUsage?.summary).toContain('new_string=`sentence.\\n\\nSecond`');
+    expect(tool.promptUsage?.summary).toContain('oldText=`sentence.Second`');
+    expect(tool.promptUsage?.summary).toContain('newText=`sentence.\\n\\nSecond`');
     expect(tool.promptUsage?.summary).toContain('do not send the surrounding multi-thousand-character line');
-    expect(tool.promptUsage?.summary).toContain('old_string=`>>`');
-    expect(tool.promptUsage?.summary).toContain('new_string=`\\n\\n`');
-    expect(tool.promptUsage?.summary).toContain('new_string=`\\n\\n>>`');
+    expect(tool.promptUsage?.summary).toContain('oldText=`>>`');
+    expect(tool.promptUsage?.summary).toContain('newText=`\\n\\n`');
+    expect(tool.promptUsage?.summary).toContain('newText=`\\n\\n>>`');
     expect(tool.promptUsage?.summary).toContain('Replacement is literal');
     expect(tool.promptUsage?.summary).toContain('block Markdown such as headings, lists, blockquotes/callouts');
     expect(tool.promptUsage?.summary).toContain('replacing only `Target` with `### Heading`');
     expect(tool.promptUsage?.summary).toContain('produces `>> ### Heading`, not a heading');
-    expect(tool.promptUsage?.summary).toContain('Include the delimiter in old_string');
+    expect(tool.promptUsage?.summary).toContain('Include the delimiter in oldText');
     expect(tool.promptUsage?.summary).toContain('receive the identical replacement');
   });
 
@@ -35,14 +35,11 @@ describe('createEditNoteTool', () => {
 
     await tool.execute('call', {
       path: 'notes/a.md',
-      old_string: 'sentence.Second',
-      new_string: 'sentence.\n\nSecond',
+      edits: [{ oldText: 'sentence.Second', newText: 'sentence.\n\nSecond' }],
     });
 
     expect(deps.vault.editNote).toHaveBeenCalledWith(expect.objectContaining({
-      old_string: 'sentence.Second',
-      new_string: 'sentence.\n\nSecond',
-      replace_all: false,
+      edits: [{ oldText: 'sentence.Second', newText: 'sentence.\n\nSecond', replaceAll: false }],
     }));
   });
 
@@ -52,14 +49,11 @@ describe('createEditNoteTool', () => {
 
     await tool.execute('call', {
       path: 'notes/a.md',
-      old_string: '>> Target',
-      new_string: '\n\n### Heading',
+      edits: [{ oldText: '>> Target', newText: '\n\n### Heading' }],
     });
 
     expect(deps.vault.editNote).toHaveBeenCalledWith(expect.objectContaining({
-      old_string: '>> Target',
-      new_string: '\n\n### Heading',
-      replace_all: false,
+      edits: [{ oldText: '>> Target', newText: '\n\n### Heading', replaceAll: false }],
     }));
   });
 
@@ -72,17 +66,35 @@ describe('createEditNoteTool', () => {
 
     await tool.execute('call', {
       path: 'notes/a.md',
-      old_string: '>>',
-      new_string: newString,
-      replace_all: true,
+      edits: [{ oldText: '>>', newText: newString, replaceAll: true }],
     });
 
     expect(deps.vault.editNote).toHaveBeenCalledWith({
       file: undefined,
       path: 'notes/a.md',
-      old_string: '>>',
-      new_string: newString,
-      replace_all: true,
+      edits: [{ oldText: '>>', newText: newString, replaceAll: true }],
+    });
+  });
+
+  it('passes every edits[] item through instead of only the first', async () => {
+    const deps = makeDeps();
+    const tool = createEditNoteTool(deps);
+
+    await tool.execute('call', {
+      path: 'notes/a.md',
+      edits: [
+        { oldText: 'alpha', newText: 'one' },
+        { oldText: 'beta', newText: 'two', replaceAll: true },
+      ],
+    });
+
+    expect(deps.vault.editNote).toHaveBeenCalledWith({
+      file: undefined,
+      path: 'notes/a.md',
+      edits: [
+        { oldText: 'alpha', newText: 'one', replaceAll: false },
+        { oldText: 'beta', newText: 'two', replaceAll: true },
+      ],
     });
   });
 });

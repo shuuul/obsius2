@@ -343,24 +343,34 @@ describe('ObsidianVaultApi', () => {
     expect(getMarkdownFiles).not.toHaveBeenCalled();
   });
 
-  it('searchNotes lists files when query is * with path scope', async () => {
+  it('searchNotes rejects listing queries toward ls', async () => {
     const api = new ObsidianVaultApi(makeApp([
       { path: 'month/2026-2.md', content: 'journal entry' },
       { path: 'other/note.md', content: 'elsewhere' },
     ]) as never);
 
-    const hits = await api.searchNotes({ query: '*', path: 'month', limit: 10 });
-    expect(hits).toEqual([{ path: 'month/2026-2.md' }]);
+    await expect(api.searchNotes({ query: '*', path: 'month', limit: 10 }))
+      .rejects.toThrow('Use `ls` with `path` instead');
+    await expect(api.searchNotes({ query: 'path:month', limit: 10 }))
+      .rejects.toThrow('Use `ls` with `path` instead');
   });
 
-  it('searchNotes lists files for path: prefix without text needle', async () => {
+  it('searchNotes scopes to one Markdown file or a folder', async () => {
     const api = new ObsidianVaultApi(makeApp([
-      { path: 'month/2026-2.md', content: 'x' },
-      { path: 'month/extra.md', content: 'y' },
-    ]) as never);
+      { path: 'notes/a.md', content: 'hello world' },
+      { path: 'notes/b.md', content: 'hello again' },
+      { path: 'other/c.md', content: 'hello elsewhere' },
+    ], ['notes']) as never);
 
-    const hits = await api.searchNotes({ query: 'path:month', limit: 10 });
-    expect(hits.map((h) => h.path).sort()).toEqual(['month/2026-2.md', 'month/extra.md']);
+    await expect(api.searchNotes({ query: 'hello', path: 'notes/a.md', limit: 10 }))
+      .resolves.toEqual([{ path: 'notes/a.md', line: 1 }]);
+    await expect(api.searchNotes({ query: 'hello', path: 'notes', limit: 10 }))
+      .resolves.toEqual([
+        { path: 'notes/a.md', line: 1 },
+        { path: 'notes/b.md', line: 1 },
+      ]);
+    await expect(api.searchNotes({ query: 'hello', path: 'missing.md', limit: 10 }))
+      .rejects.toThrow('Search path not found: missing.md');
   });
 
   it('getLinks returns backlinks from resolvedLinks', () => {
@@ -436,6 +446,22 @@ describe('ObsidianVaultApi', () => {
 
     expect(result.replacements).toBe(2);
     expect(app.getContent('notes/a.md')).toBe('baz bar baz');
+  });
+
+  it('editNote applies every edits[] item against the original file', async () => {
+    const app = makeApp([{ path: 'notes/a.md', content: 'alpha beta' }]);
+    const api = new ObsidianVaultApi(app as never);
+
+    const result = await api.editNote({
+      path: 'notes/a.md',
+      edits: [
+        { oldText: 'alpha', newText: 'one' },
+        { oldText: 'beta', newText: 'two' },
+      ],
+    });
+
+    expect(result.replacements).toBe(2);
+    expect(app.getContent('notes/a.md')).toBe('one two');
   });
 
   it('editNote rejects empty old_string', async () => {

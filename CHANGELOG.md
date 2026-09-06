@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.27.0](https://github.com/shuuul/obsidian-pivi/compare/0.26.1...0.27.0) (2026-09-06)
+
+### Features
+
+* register generic vault tools as Pi-family live names (`read`, `write`, `edit`, `ls`, `search`, `bash`, `mkdir`, `move`, `delete`) with silent aliases
+* scope `search` to a note or folder path and reject listing queries toward `ls`
+
+### Bug Fixes
+
+* apply every `edit` item against the original note and remind alias tool names and fields after argument normalization
+
 ## [0.26.1](https://github.com/shuuul/obsidian-pivi/compare/0.26.0...0.26.1) (2026-09-05)
 
 ### Bug Fixes

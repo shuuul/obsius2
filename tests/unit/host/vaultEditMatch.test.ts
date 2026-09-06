@@ -1,4 +1,5 @@
 import {
+  applyVaultEdits,
   buildOldStringNotFoundMessage,
   replaceVaultEditMatch,
 } from '@pivi/obsidian-host';
@@ -66,6 +67,38 @@ describe('vaultEditMatch', () => {
       '来自联系松散的"弱关系"。',
     );
     expect(message).toContain('curly quotes');
-    expect(message).toContain('obsidian_read');
+    expect(message).toContain('read');
+  });
+});
+
+describe('applyVaultEdits', () => {
+  it('applies every item against the original file', () => {
+    expect(applyVaultEdits({
+      filePath: 'note.md',
+      content: 'alpha beta',
+      edits: [
+        { oldText: 'alpha', newText: 'one' },
+        { oldText: 'beta', newText: 'two' },
+      ],
+    })).toEqual({ content: 'one two', replacements: 2 });
+  });
+
+  it('rejects overlapping spans instead of applying incrementally', () => {
+    expect(() => applyVaultEdits({
+      filePath: 'note.md',
+      content: 'hello world',
+      edits: [
+        { oldText: 'hello world', newText: 'x' },
+        { oldText: 'world', newText: 'y' },
+      ],
+    })).toThrow('edits[0] and edits[1] overlap in note.md');
+  });
+
+  it('keeps replaceAll on the original text', () => {
+    expect(applyVaultEdits({
+      filePath: 'note.md',
+      content: 'foo bar foo',
+      edits: [{ oldText: 'foo', newText: 'baz', replaceAll: true }],
+    })).toEqual({ content: 'baz bar baz', replacements: 2 });
   });
 });
