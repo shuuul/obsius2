@@ -1,9 +1,9 @@
 ---
 id: "052"
 title: "Hide remaining agent tool routing"
-status: Active
+status: Completed
 created: 2026-09-05
-updated: 2026-09-05
+updated: 2026-09-06
 coordinator: "Amp"
 ---
 
@@ -175,6 +175,13 @@ Use `Pending`, `Claimed`, `In progress`, `Blocked`, or `Done`.
 - Blockers: None.
 - Next action: `npm run check:specs`, then user review.
 
+### 2026-09-06 — Amp — review fixes landed; ready to archive
+
+- Changed: `edit` applies every `edits[]` item against the original file and fails overlapping spans. Truncation copy teaches `offset`/`limit`. Alias reminders read raw `toolCall.arguments` in Agent `afterToolCall` because `prepareArguments` runs first. Search `path` scopes to one note or folder. Committed on `feat/pi-family-live-tool-names` as `255b373c`, `10dd2a40`, `d9a8c953`.
+- Evidence: 7 Jest suites / 90 tests for the review-fix surface plus `tsc --noEmit` green.
+- Remaining: Archive 052 and publish 0.27.0.
+- Blockers: None.
+
 ## Completion summary
 
-Generic file tools now register as Pi-lowercase live names. Vault vs disk vs absolute path, wikilink vs path, and search vs list are resolved inside the tool. Silent aliases still run and remind once. Prompt, README, and package docs teach live names only. Old JSONL `obsidian_*` rows still render. Uncommitted.
+Generic file tools now register as Pi-lowercase live names (`read` `write` `edit` `ls` `search` `bash` `mkdir` `move` `delete`). Vault vs disk vs absolute path, wikilink vs path, and search vs list are resolved inside the tool. Silent aliases still run and remind once from raw tool-call arguments. `edit` applies every item against the original note. Prompt, README, and package docs teach live names and `offset`/`limit` continuation. Old JSONL `obsidian_*` rows still render. Shipped in 0.27.0.

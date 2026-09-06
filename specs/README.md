@@ -11,7 +11,6 @@ Copy [000-template.md](000-template.md) to start a spec.
 | Spec | Created | Outcome |
 |---|---|---|
 | [051 — Permission scopes and chat lifecycle cleanup](051-permission-scopes-and-chat-lifecycle-cleanup.md) | Active | Stable device-local permission scopes plus safe empty-session and Archive/Delete lifecycle cleanup. |
-| [052 — Hide remaining agent tool routing](052-hide-remaining-agent-tool-routing.md) | Active | Hide remaining `file`/`path` retry, search-as-listing, and leftover sibling-tool routing after unified read/list. |
 
 ## Archived specs
 
@@ -67,6 +66,7 @@ Copy [000-template.md](000-template.md) to start a spec.
 | [048 — Settings UI system and Obsidian-native page navigation](archive/048-settings-ui-system-and-grouped-navigation.md) | 2026-09-03 | Delivered one enforced settings primitive/CSS system with Obsidian 1.13 native grouped navigation, indexed search routing, and all settings pages migrated. |
 | [049 — Post-review contracts architecture and community execution](archive/049-post-review-contracts-architecture-and-community-execution.md) | 2026-09-04 | Aligned active MCP docs, protected repository boundaries, reduced composition/API friction, added compatibility and quality signals, and launched community and funding routes. |
 | [050 — Architecture review stability and trustworthy task execution](archive/050-architecture-review-stability-and-trustworthy-task-execution.md) | 2026-09-05 | Hardened real-host verification, lifecycle rollback, measured projections, strict File Recovery, and package/documentation contracts with full local acceptance. |
+| [052 — Hide remaining agent tool routing](archive/052-hide-remaining-agent-tool-routing.md) | 2026-09-06 | Pi-family live names with silent aliases, unified read/ls routing, and search scoped to a note or folder. |
 
 ## Numbering and files
 
@@ -105,4 +105,5 @@ Before moving a spec to `archive/`:
 5. Set `status: Completed`, update the date, move the file without renaming it, and move its README entry to Archived specs.
 
 Run `npm run check:specs` before committing. The check validates filenames, numbering, flat frontmatter, required sections, lifecycle placement, and index coverage; it cannot prove that prose matches the implementation.
+
 
