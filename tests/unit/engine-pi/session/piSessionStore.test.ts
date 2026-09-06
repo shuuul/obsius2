@@ -84,7 +84,7 @@ describe('PiSessionStore range reads', () => {
       expect(page.messages[1]?.toolCalls).toEqual([
         expect.objectContaining({
           id: 'call-1',
-          name: 'obsidian_read',
+          name: 'read',
           result: 'note body',
           status: 'completed',
         }),

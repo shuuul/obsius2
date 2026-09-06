@@ -188,7 +188,7 @@ function assertSmokeSnapshot(snapshot) {
   if (snapshot.messages[0]?.content !== expectedUser || snapshot.messages[1]?.content !== expectedAssistant) {
     fail(`Smoke session content mismatch: ${JSON.stringify(snapshot.messages)}`);
   }
-  const tool = snapshot.messages[1]?.toolCalls?.find(call => call.name === 'obsidian_write');
+  const tool = snapshot.messages[1]?.toolCalls?.find(call => call.name === 'write');
   if (!tool || tool.status !== 'completed' || !tool.result.includes(`Wrote ${notePath}`)) {
     fail(`Smoke tool result mismatch: ${JSON.stringify(snapshot.messages)}`);
   }

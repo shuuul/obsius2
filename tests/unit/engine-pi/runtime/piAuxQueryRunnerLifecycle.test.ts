@@ -118,7 +118,10 @@ describe('PiAuxQueryRunner (core)', () => {
     expectDefined(agentCall);
     const agentOptions = agentCall[0];
     expectDefined(agentOptions);
-    expect(agentOptions.streamFn).toBe(mockStreamSimple);
+    expect(typeof agentOptions.streamFn).toBe('function');
+    expect(agentOptions.streamFn).not.toBe(mockStreamSimple);
+    (agentOptions.streamFn as (model: unknown, context: unknown) => unknown)('model-arg', 'request-arg');
+    expect(mockStreamSimple).toHaveBeenCalledWith('model-arg', 'request-arg', undefined);
   });
 
   it('builds read headroom from the child model instead of a parent session', async () => {

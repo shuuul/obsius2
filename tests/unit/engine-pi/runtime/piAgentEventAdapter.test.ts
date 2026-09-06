@@ -266,7 +266,7 @@ describe('PiAgentEventAdapter', () => {
       expect(chunks).toEqual([{
         type: 'tool_use',
         id: 'call-1',
-        name: 'Read',
+        name: 'read',
         input: { file_path: '/test.md' },
       }]);
     });

@@ -114,7 +114,7 @@ describe('createPiAuxQueryRunner', () => {
       ...args: [unknown, unknown]
     ) => unknown;
     streamFn('model-arg', 'request-arg');
-    expect(mockStreamSimple).toHaveBeenCalledWith('model-arg', 'request-arg');
+    expect(mockStreamSimple).toHaveBeenCalledWith('model-arg', 'request-arg', undefined);
   });
 
   it('creates isolated jobs for repeated same-purpose background subagents', async () => {
